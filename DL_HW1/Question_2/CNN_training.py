@@ -19,7 +19,7 @@ label_map ={
 'none' : 2
 }
 
-img_dir = './images/'
+img_dir = '/home/mint/Desktop/Data_Set/Deep_Learning_NCTU_Homework/DL_HW1/Question_2/images/'
 train_data_dir = './train.csv'
 test_data_dir = './test.csv'
 
@@ -40,7 +40,7 @@ def preprocess_image(save_name):
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Sequential(         # input shape (1, 64, 64)
+        self.conv1 = nn.Sequential(         # input shape (3, 64, 64)
             nn.Conv2d(
                 in_channels=3,              # input height
                 out_channels=16,            # n_filters
@@ -66,7 +66,7 @@ class CNN(nn.Module):
         return output, x    # return x for visualization
 
 
-cnn = CNN().cuda()
+cnn = CNN()
 
 optimizer = torch.optim.Adam(cnn.parameters(), lr=LR)   # optimize all cnn parameters
 loss_func = nn.CrossEntropyLoss()                       # the target label is not one-hotted
@@ -96,10 +96,10 @@ train_image_x = np.delete(train_image_x,0,0) ; test_image_x = np.delete(test_ima
 train_image_t = np.delete(train_image_t,0,0) ; test_image_t = np.delete(test_image_t,0,0)
 
 # transfer data into tensor vector form
-train_tensor_x = torch.Tensor(train_image_x).cuda()
-train_tensor_y = torch.Tensor(train_image_t).cuda()
-test_tensor_x = torch.Tensor(test_image_x).cuda()
-test_tensor_y = torch.Tensor(test_image_t).cuda()
+train_tensor_x = torch.Tensor(train_image_x)
+train_tensor_y = torch.Tensor(train_image_t)
+test_tensor_x = torch.Tensor(test_image_x)
+test_tensor_y = torch.Tensor(test_image_t)
 
 # For batch normalization , training data should be wrapped into wrapper
 train_data = Data.TensorDataset(train_tensor_x,train_tensor_y)
@@ -110,8 +110,10 @@ test_acc_list = [] ; train_acc_list =[] ; loss_list = []
 for epoch in range(EPOCH):
     for step, (b_x, b_y) in enumerate(train_loader):   # gives batch data, normalize x when iterate train_loader
         output = cnn(b_x)[0]            # cnn output
-        b_x = b_x.cuda()
-        b_y = b_y.squeeze_().long().cuda()
+        b_x = b_x
+        b_y = b_y.squeeze_().long()
+        print(output.shape)
+        print(b_y.shape)
         loss = loss_func(output, b_y)   # cross entropy loss
         optimizer.zero_grad()           # clear gradients for this training step
         loss.backward()                 # backpropagation, compute gradients
@@ -132,4 +134,4 @@ epoch_list = [i for i in range(EPOCH)]
 plt.figure();plt.plot(epoch_list,test_acc_list);plt.title('test accuracy');plt.savefig('test_accuracy.png')
 plt.figure();plt.plot(epoch_list,train_acc_list);plt.title('train accuracy');plt.savefig('train_accuracy.png')
 plt.figure();plt.plot(epoch_list,loss_list);plt.title('losss');plt.savefig('loss.png')
-torch.save(cnn.state_dict(),'./HW2/training_modle2')
+torch.save(cnn.state_dict(),'./DL_HW1/Question_2/training_modle2')
