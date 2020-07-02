@@ -1,45 +1,24 @@
 from __future__ import print_function
-
 #%matplotlib inline
-
 import argparse
-
 import glob,os
-
 import random
-
 import torch
-
 import torch.nn as nn
-
 import torch.nn.parallel
-
 import torch.backends.cudnn as cudnn
-
 import torch.optim as optim
-
 import torch.utils.data as Data
-
 import torchvision.datasets as dset
-
 import torchvision.transforms as transforms
-
 import torchvision.utils as vutils
-
 import numpy as np
-
 import matplotlib.pyplot as plt
-
 import matplotlib.animation as animation
-
 import matplotlib.image as pltim
-
 import argparse
-
 from IPython.display import HTML
-
 from Model import *
-
 from PIL import Image
 
 
@@ -61,27 +40,23 @@ ngpu = 1
 nz = 100
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 
-
+if torch.cuda.is_available() and ngpu > 0:
+    print("trainging in GPU")
+else:
+    print("trainging in CPU")
 
 def common_arg_parser():
-
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # ImageFolder method
     # parser.add_argument('--dataroot', default='./img_align_celeba/', type=str)
-
-    parser.add_argument('--dataroot', default='./img_align_celeba/1/*.jpg', type=str)
-
-    parser.add_argument('--batch_size', default=200, type=int)
-
+    # /home/mint/Desktop/Data_Set/Deep_Learning_NCTU_Homework/DL_HW3/img_align_celeba/1/*.jpg
+    parser.add_argument('--dataroot', default='/home/mint/Desktop/Data_Set/Deep_Learning_NCTU_Homework/DL_HW3/img_align_celeba', type=str)
+    parser.add_argument('--batch_size', default=128, type=int)
     parser.add_argument('--image_size', default=64, type=int)
-
-    parser.add_argument('--num_epochs', default=50, type=int)
-
-    parser.add_argument('--lr', default=0.0001, type=float)
-
+    parser.add_argument('--num_epochs', default=5, type=int)
+    parser.add_argument('--lr', default=0.0002, type=float)
     return parser.parse_args()
-
 
 def weight_init(md):
     classname = md.__class__.__name__
@@ -90,10 +65,6 @@ def weight_init(md):
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(md.weight.data, 1.0, 0.02)  # initialize the Bacthnorm unit
         nn.init.constant_(md.bias.data, 0)
-
-
-
-
 
 def train(dataloader, generator, discriminator, optimizer_g, optimizer_d, criterion, num_epochs, batch_size, lr):
     # Each epoch, we have to go through every data in dataset
@@ -122,13 +93,11 @@ def train(dataloader, generator, discriminator, optimizer_g, optimizer_d, criter
             # Send data to discriminator and calculate the loss and gradient
             # view(-1) will expand all the output vector
             output = discriminator(real_data).view(-1)
-            # training D(x) value
-            D_x = output.mean().item()
             # calculate loss for discriminator
             loss_disc = criterion(output, label)
             loss_disc.backward()
-
-
+            # training D(x) value
+            D_x = output.mean().item()
 
             ## train with fake data
             ## Using Fake data, other steps are the same.
@@ -138,8 +107,6 @@ def train(dataloader, generator, discriminator, optimizer_g, optimizer_d, criter
             # Send data to discriminator
             # notice : the detach() will stop gradient decent from discriminator
             output = discriminator(fake.detach()).view(-1)
-            # train D(G(Z)) value
-            D_G_Z = output.mean().item()
             # construct a vector to indicate that the label is a real data
             # use the original label to construct the label vector
             label.fill_(lable_fake)
@@ -147,10 +114,10 @@ def train(dataloader, generator, discriminator, optimizer_g, optimizer_d, criter
             loss_gen = criterion(output, label)
             # Update your network
             loss_gen.backward()
-
-
-            optimizer_d.step()
+            # train D(G(Z)) value
+            D_G_Z = output.mean().item()
             disc_total_loss = loss_gen + loss_disc
+            optimizer_d.step()
 
             ##############
             # (1) update the generator by loss : max log(D(G(z)))
@@ -162,16 +129,11 @@ def train(dataloader, generator, discriminator, optimizer_g, optimizer_d, criter
             # we should minimize loss between fake data and true data
             output = discriminator(fake).view(-1)
             # train D(G(Z)) value for traing generator
-            D_G_Z_GEN = output.mean().item()
-
             gen_loss = criterion(output,label)
             # only make generator backword
             gen_loss.backward()
-
+            D_G_Z_GEN = output.mean().item()
             optimizer_g.step()
-
-
-
             if i % 50 == 0:
                 # Record your loss every iteration for visualization
                 print("[%d] , Disc_Loss : %.2f, Gen_Loss : %.2f " %(epoch, disc_total_loss.item(), gen_loss.item()))
@@ -194,57 +156,57 @@ def train(dataloader, generator, discriminator, optimizer_g, optimizer_d, criter
     fig = plt.figure(figsize=(8,8))
     plt.axis("off")
     ims = [[plt.imshow(np.abs(np.transpose(i,(1,2,0))), animated=True)] for i in img_list]
+    # pltim.imsave('./result/fake_img_list_'+str(epoch)+'.png',ims)
     ani = animation.ArtistAnimation(fig, ims, interval=1000, repeat_delay=1000, blit=True)
     HTML(ani.to_jshtml())
 
 def main(args):
-
     # Create the dataset by using ImageFolder(get extra point by using customized dataset)
     # ImgageFolder method
-    # img = dset.ImageFolder(os.path.join(args.dataroot),
-    #                         transform = transforms.Compose([
-    #                         transforms.Resize(args.image_size),
-    #                         transforms.CenterCrop(52),
-    #                         transforms.ToTensor()
-    #                         ])
-    #                         )
+    # os.path.join(args.dataroot)
+    dataset = dset.ImageFolder(root = args.dataroot,
+                            transform = transforms.Compose([
+                            transforms.Resize(args.image_size),
+                            transforms.CenterCrop(args.image_size),
+                            transforms.ToTensor(),
+                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                            ])
+                            )
 
     # customized reading file method
-    filename = args.dataroot
-    img_size = args.image_size
-    size = (img_size,img_size)
-    shuf_arr = np.arange(train_data_num)
-    np.random.shuffle(shuf_arr)
-    data_arr = np.zeros((train_data_num,*size,3), dtype=float)
-    for i, file in enumerate(glob.glob(filename)):
-        im = Image.open(file)
-        im = im.convert("RGB")
-        im = im.resize(size)
-        data_arr[shuf_arr[i], :, :, :] = im
-        if i == train_data_num -1 :
-            break
-
-    data_arr = data_arr / 225 # normalize the data
-
-    # remember to preprocess the image by using functions in pytorch
-    datatensor = torch.as_tensor(data_arr, device=device)
-    dataset = Data.TensorDataset(datatensor)
-
+    # filename = args.dataroot
+    # img_size = args.image_size
+    # size = (img_size,img_size)
+    # shuf_arr = np.arange(train_data_num)
+    # np.random.shuffle(shuf_arr)
+    # data_arr = np.zeros((train_data_num,*size,3), dtype=float)
+    # for i, file in enumerate(glob.glob(filename)):
+    #     im = Image.open(file)
+    #     im = im.convert("RGB")
+    #     im = im.resize(size)
+    #     data_arr[shuf_arr[i], :, :, :] = im
+    #     if i == train_data_num -1 :
+    #         break
+    # noise = np.random.normal(0,1, data_arr.shape)
+    # data_arr = data_arr + noise
+    # data_arr = data_arr / 255 # normalize the data
+    # datatensor = torch.as_tensor(data_arr, device=device)
+    # dataset = Data.TensorDataset(datatensor)
 
     # Create the dataloader
-    dataloader = Data.DataLoader(dataset=dataset, batch_size=args.batch_size)
-    # print(dataloader)
-
+    # works = 4
+    dataloader = Data.DataLoader(dataset=dataset, batch_size=args.batch_size, shuffle = True)
     # Create the generator and the discriminator
+
     # Send them to your device
     generator = Generator(ngpu).to(device)
     discriminator = Discriminator(ngpu).to(device)
+
     # Initialize them
     generator.apply(weight_init)
     discriminator.apply(weight_init)
 
     # Setup optimizers for both G and D and setup criterion at the same time
-
     optimizer_g = optim.Adam(generator.parameters(), lr=args.lr, betas=(beta1, 0.999))
     optimizer_d = optim.Adam(discriminator.parameters(), lr=args.lr, betas=(beta1, 0.999))
     criterion = nn.BCELoss()

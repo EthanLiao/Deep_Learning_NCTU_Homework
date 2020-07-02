@@ -1,0 +1,10 @@
+Episode:      0, interaction_steps:      0, reward: 29, epsilon: 0.100000
+Episode:      1, interaction_steps:      0, reward: 29, epsilon: 0.100000
+Episode:      2, interaction_steps:      0, reward: 29, epsilon: 0.100000
+Episode:      3, interaction_steps:      0, reward: 29, epsilon: 0.100000
+Episode:      4, interaction_steps:      0, reward: 31, epsilon: 0.100000
+Episode:      5, interaction_steps:      0, reward: 28, epsilon: 0.100000
+Episode:      6, interaction_steps:      0, reward: 30, epsilon: 0.100000
+Episode:      7, interaction_steps:      0, reward: 30, epsilon: 0.100000
+Episode:      8, interaction_steps:      0, reward: 28, epsilon: 0.100000
+Episode:      9, interaction_steps:      0, reward: 29, epsilon: 0.100000

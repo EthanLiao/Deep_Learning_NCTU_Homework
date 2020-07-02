@@ -74,12 +74,12 @@ class ReplayMemory(object):
             self.memory.append(None)
         # store operation in the relay memory
         self.memory[self.position] = Transition(*args)
-        # replay memory operate in a queue-like operation
+        # replay memory operate in a circular queue-like operation
         self.position = (self.position + 1) % self.capacity
 
 
     def sample(self, batch_size):
-        #assert False, "You should check the source code for your homework!!" # Sample when you are training
+        # assert False, "You should check the source code for your homework!!" # Sample when you are training
         # extract number of 「batch_size」 items in the replay memory
         return random.sample(self.memory, batch_size)
 
@@ -123,7 +123,6 @@ class DQN(object):
         self.EPS_END = args.epsilon_final
         self.EPS_DECAY = args.epsilon_decay
         self.LEARN_RATE = args.lr
-
         self.action_dim = 3
         self.state_dim = (84,84)
         self.epsilon = 0.0
@@ -143,7 +142,9 @@ class DQN(object):
         self.epsilon = self.EPS_END + np.maximum( (self.EPS_START-self.EPS_END) * (1 - self.interaction_steps/self.EPS_DECAY), 0) # linear decay
         if random.random() < self.epsilon:
             #assert False, "You should check the source code for your homework!!" # random select for epsilon greedy (Dependent on the exploration probability)
-            return torch.tensor( [random.sample([0,1,2],1)], device=device, dtype=torch.long ) #torch.tensor([[random.randrange(self.action_dim)]], device=device, dtype=torch.long)
+            # return torch.tensor( [random.sample([0,1,2],1)], device=device, dtype=torch.long ) #torch.tensor([[random.randrange(self.action_dim)]], device=device, dtype=torch.long)
+            choices = [0]*3+[1]*6+[2]*1
+            return torch.tensor( [random.sample(choices,1)], device=device, dtype=torch.long ) #torch.tensor([[random.randrange(self.action_dim)]], device=device, dtype=torch.long)
         else:
             with torch.no_grad():
                 return self.policy_net(state).max(1)[1].view(1, 1)
@@ -286,10 +287,12 @@ def main():
         os.makedirs(args.save_dir)
 
     global_steps = 0
+    reward_li = []
+    episode_li = [i for i in range(num_episodes)]
+
     for i_episode in range(num_episodes):
         episode_reward = 0
         state = env.reset()
-
         for _ in range(10000):
             #env.render()
             action = agent.select_action(state)
@@ -314,6 +317,7 @@ def main():
             if done:
                 print("Episode: %6d, interaction_steps: %6d, reward: %2d, epsilon: %f"%(i_episode+1, agent.interaction_steps, episode_reward, agent.epsilon))
                 log_fd.write("Episode: %6d, interaction_steps: %6d, reward: %2d, epsilon: %f\n"%(i_episode+1, agent.interaction_steps, episode_reward, agent.epsilon))
+                reward_li.append(episode_reward)
                 break
 
         if i_episode % save_model_per_ep == 0:
@@ -338,7 +342,7 @@ def main():
             log_fd.write("Evaluation: True, episode: %6d, interaction_steps: %6d, evaluate reward: %2d"%(i_episode+1, agent.interaction_steps, average_reward/test_times))
 
     log_fd.close()
-
+    plt.figure();plt.plot(episode_li, reward_li);plt.title('Policy DQN episode total reward');plt.savefig('./result/Policy DQN episode total reward')
 def test():
     agent = DQN() # agent = RandomAgent()
     env = Atari()
